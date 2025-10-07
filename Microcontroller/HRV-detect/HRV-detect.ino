@@ -4,7 +4,8 @@
 #include <LiquidCrystal.h>
 
 MAX30105 sensor;
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+const int rs = 7, en = 8, d4 = 9, d5 = 10, d6 = 11, d7 = 12;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 const int bufferSize = 100;
 uint32_t irBuffer[bufferSize];
@@ -56,28 +57,32 @@ float countpNN50(unsigned long arr[], int n){
 }
 
 void displayHRV(unsigned long arr[], int n){
-    float SDNN = countSDNN(arr, n);
-    float RMSSD = countRMSSD(arr, n);
-    float pNN50 = countpNN50(arr, n);
+  float SDNN = countSDNN(arr, n);
+  float RMSSD = countRMSSD(arr, n);
+  float pNN50 = countpNN50(arr, n);
 
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Unclassified..");
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("SDNN:");
+  lcd.print(SDNN, 1);
+  lcd.setCursor(0, 1);
+  lcd.print("R:");
+  lcd.print(RMSSD, 1);
+  lcd.print(" p:");
+  lcd.print(pNN50, 0);
+  lcd.print("%");
 
-    lcd.setCursor(0, 1);
-    lcd.print("S:");
-    lcd.print(SDNN, 1);
-    lcd.print("R:");
-    lcd.print(RMSSD, 1);
-    lcd.print("P:");
-    lcd.print(pNN50, 0);
-    delay(1000);
+  Serial.print("SDNN="); Serial.print(SDNN);
+  Serial.print(", RMSSD="); Serial.print(RMSSD);
+  Serial.print(", pNN50="); Serial.println(pNN50);
 }
 
 void setup(){
     Serial.begin(9600);
     lcd.begin(16, 2);
     lcd.print("Initializing...");
+    delay(1000);
+    lcd.clear();
     
     if (!sensor.begin(Wire, I2C_SPEED_STANDARD)) {
         lcd.clear();
@@ -96,11 +101,12 @@ void loop(){
     Serial.print("IR:");
     Serial.println(irValue);
     
-    if (irValue > 300){
+    if (irValue > 3000){
         if(checkForBeat(irValue)){
             unsigned long currentTime = millis();
             NNinterval = currentTime - lastPeakTime;
             lastPeakTime = currentTime;
+            Serial.println(NNinterval);
 
             if (NNinterval > 300 && NNinterval < 2000){
                 if (NNcount < MAX_NN){
@@ -114,9 +120,10 @@ void loop(){
             }
             float HR = 60000.0 / NNinterval;
             Serial.print("NN: ");
-            Serial.println(NNinterval);
+            Serial.print(NNinterval);
             Serial.print("ms | HR: ");
-            Serial.println(HR);
+            Serial.print(HR);
+            Serial.println();
 
             if (NNcount >= 10){
                 displayHRV(NN, NNcount);
@@ -127,6 +134,7 @@ void loop(){
         lcd.setCursor(0, 0);
         lcd.print("No Finger Detected");
         delay(500);
+        lcd.clear();
     }
     delay(20);
 }

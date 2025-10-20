@@ -18,7 +18,6 @@ const long FINGER_THRESHOLD = 50000;
 const int MIN_RR_INTERVAL = 300;
 const int MAX_RR_INTERVAL = 2000;
 
-// === variabel detak ===
 unsigned long lastBeat = 0;
 float beatsPerMinute = 0;
 
@@ -27,11 +26,7 @@ float vReal[MAX_RR_INTERVALS];
 float vImag[MAX_RR_INTERVALS];
 ArduinoFFT<float> FFT(vReal, vImag, MAX_RR_INTERVALS, 1.0);
 
-// === bandpass sederhana (hilangkan DC drift) ===
-float dc = 0;
-float smooth = 0;
-
-// === scaling dari Python ===
+// === scaling dari Python (contoh) ===
 float meanVals[2]  = {7.7733, 20.1531};      // mean pNN50, HF
 float scaleVals[2] = {9.4457, 15.7324};      // scale pNN50, HF
 
@@ -44,14 +39,7 @@ struct HRVFeatures {
   float hf;
 };
 
-// === fungsi bantu ===
-float bandpassFilter(float input) {
-  dc = 0.98 * dc + 0.02 * input;
-  float highpass = input - dc;
-  smooth = 0.9 * smooth + 0.1 * highpass;
-  return smooth;
-}
-
+// === deklarasi fungsi ===
 HRVFeatures calculateHRV();
 int predictCancer(HRVFeatures hrv);
 void displayResult(HRVFeatures hrv, int prediction);
@@ -85,10 +73,9 @@ void setup() {
 
 void loop() {
   long irValue = sensor.getIR();
-  float filtered = bandpassFilter(irValue);
-
+  Serial.println(irValue);
   // deteksi jari
-  if (filtered < 1000) {
+  if (irValue < FINGER_THRESHOLD) {
     lcd.setCursor(0, 0);
     lcd.print("No finger       ");
     lcd.setCursor(0, 1);
@@ -99,7 +86,7 @@ void loop() {
   }
 
   // deteksi detak jantung
-  if (checkForBeat(filtered)) {
+  if (checkForBeat(irValue)) {
     long now = millis();
     long delta = now - lastBeat;
     lastBeat = now;
@@ -129,7 +116,7 @@ void loop() {
     }
   }
 
-  // setelah 256 RR terkumpul
+  // setelah data cukup
   if (rrCount >= MAX_RR_INTERVALS) {
     lcd.clear();
     lcd.print("Analyzing...");
@@ -151,7 +138,7 @@ void loop() {
   delay(10);
 }
 
-// === hitung HRV ===
+// === hitung HRV (pNN50 + HF dengan auto fs) ===
 HRVFeatures calculateHRV() {
   HRVFeatures hrv;
   if (rrCount < 10) {
@@ -160,7 +147,7 @@ HRVFeatures calculateHRV() {
     return hrv;
   }
 
-  // pNN50
+  // --- 1. Hitung pNN50 ---
   int nn50 = 0;
   for (int i = 1; i < rrCount; i++) {
     float diff = fabs(rrIntervals[i] - rrIntervals[i - 1]);
@@ -168,7 +155,13 @@ HRVFeatures calculateHRV() {
   }
   hrv.pnn50 = (float)nn50 / (rrCount - 1) * 100.0;
 
-  // === FFT untuk HF ===
+  // --- 2. Hitung sampling rate aktual ---
+  float totalTime = 0;
+  for (int i = 0; i < rrCount; i++) totalTime += rrIntervals[i];
+  totalTime /= 1000.0;
+  float fs = rrCount / totalTime; // sample rate aktual (Hz)
+
+  // --- 3. Siapkan data FFT ---
   float meanRR = 0;
   for (int i = 0; i < rrCount; i++) meanRR += rrIntervals[i];
   meanRR /= rrCount;
@@ -182,17 +175,20 @@ HRVFeatures calculateHRV() {
   FFT.compute(FFT_FORWARD);
   FFT.complexToMagnitude();
 
-  float fs = 4.0; // asumsi interpolasi 4 Hz (standar HRV)
+  // --- 4. Hitung HF power (0.15–0.4 Hz) ---
   float freqRes = fs / rrCount;
   float hfPower = 0;
-
   for (int i = 0; i < rrCount / 2; i++) {
     float freq = i * freqRes;
     if (freq >= 0.15 && freq <= 0.4)
       hfPower += vReal[i];
   }
-
   hrv.hf = hfPower;
+
+  Serial.print("fs (auto): ");
+  Serial.print(fs);
+  Serial.println(" Hz");
+
   return hrv;
 }
 

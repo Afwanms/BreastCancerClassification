@@ -108,10 +108,24 @@ void loop() {
 
   lcd.setCursor(0,1);
   if (irValue < FINGER_THRESHOLD) {
-    lcd.print("No finger       ");
-  } else {
-    lcd.print("RR:"); lcd.print(rrCount); lcd.print("/"); lcd.print(MAX_RR_INTERVALS); lcd.print("   ");
-  }
+      if (collecting) {
+        collecting = false;
+      }
+      // reset semua state agar benar-benar “fresh”
+      rrCount = 0;
+      lastBeat = 0;
+      beatsPerMinute = 0;
+      beatAvg = 0;
+      rateSpot = 0;
+      for (int i=0; i<RATE_SIZE; i++) rates[i] = 0;
+
+      lcd.clear();
+      lcd.setCursor(0,0); lcd.print("No finger       ");
+      lcd.setCursor(0,1); lcd.print("detected        ");
+      Serial.println("No finger. Reset state.");
+      delay(80);
+      return;                 // <<< penting: hentikan loop di sini
+    }
 
   // ==== kendali sesi 5 menit ====
   if (irValue > FINGER_THRESHOLD && !collecting) {
@@ -125,30 +139,56 @@ void loop() {
   }
 
   if (collecting && (now - startTime >= MEAS_MS)) {
-    collecting = false;
+  collecting = false;
 
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("Analyzing...");
-    HRVFeatures hrv = calculateHRV();
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Analyzing...");
 
-    Serial.println("\n=== HRV Features ===");
-    Serial.print("pNN50: "); Serial.println(hrv.pnn50, 2);
-    Serial.print("HF   : "); Serial.println(hrv.hf, 2);
+  // Mulai stopwatch setelah 5 menit selesai
+  uint32_t tStart = millis();
+  // === hitung HRV ===
+  HRVFeatures hrv = calculateHRV();
+  // === prediksi ===
+  int prediction = predictCancer(hrv);
+  // Stop stopwatch tepat sebelum tampil hasil
+  uint32_t tEnd = millis();
+  uint32_t elapsed = tEnd - tStart; // waktu total klasifikasi
 
-    // >>> panggil KLASIFIKASI (ini yang tadi belum dipanggil)
-    int prediction = predictCancer(hrv);
-    displayResult(hrv, prediction);
+  // tampilkan hasil + waktu klasifikasi
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(prediction == 0 ? "Result: NORMAL" : "Result: CANCER");
+  lcd.setCursor(0, 1);
+  lcd.print("t=");
+  lcd.print(elapsed);
+  lcd.print("ms");
 
-    // siap sesi berikutnya
-    rrCount = 0; lastBeat = 0;
-    for (int i=0;i<RATE_SIZE;i++) rates[i] = 0;
-    rateSpot = 0; beatAvg = 0; beatsPerMinute = 0;
+  // kirim juga ke Serial Monitor
+  Serial.print("pNN50 : ");
+  Serial.print(hrv.pnn50);
+  Serial.print(" | HF : ");
+  Serial.print(hrv.hf);
+  Serial.println("\n=== Waktu Klasifikasi ===");
+  Serial.print("Total waktu: ");
+  Serial.print(elapsed);
+  Serial.println(" ms");
 
-    delay(5000);
-    lcd.clear(); lcd.print("Place finger...");
-  }
+  // siap sesi berikutnya
+  rrCount = 0; lastBeat = 0;
+  for (int i=0; i<RATE_SIZE; i++) rates[i] = 0;
+  rateSpot = 0; beatAvg = 0; beatsPerMinute = 0;
 
+  delay(5000);
+  lcd.clear();
+  lcd.print("Place finger...");
+}
   // debug
-  Serial.println(irValue);
+  Serial.print(irValue);
+  Serial.print(",");
+  Serial.print(beatAvg);
+  Serial.print(",");
+  Serial.println(rrCount);
 
   delay(10);
 }
@@ -209,20 +249,6 @@ int predictCancer(const HRVFeatures& hrv) {
   float input[2];
   for (int i = 0; i < 2; i++) input[i] = (raw[i] - meanVals[i]) / scaleVals[i];
   return (int)classifier.predict(input); // 0=Normal, 1=Cancer
-}
-
-// ===== Tampilkan hasil ke LCD & Serial =====
-void displayResult(const HRVFeatures& hrv, int prediction) {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(prediction == 0 ? "Result: NORMAL" : "Result: CANCER");
-  lcd.setCursor(0, 1);
-  lcd.print("p:"); lcd.print((int)(hrv.pnn50 + 0.5)); lcd.print("% ");
-  lcd.print("HF:"); lcd.print((int)(hrv.hf + 0.5));
-
-  Serial.println("\n=== PREDICTION ===");
-  Serial.println(prediction == 0 ? "NORMAL" : "CANCER");
-  delay(10000);
 }
 
 // ===== Helper waktu mm:ss =====

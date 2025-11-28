@@ -15,7 +15,7 @@ const byte RATE_SIZE = 4;
 byte  rates[RATE_SIZE] = {0};
 byte  rateSpot = 0;
 long  lastBeat = 0;
-float beatsPerMinute = 0;
+int beatsPerMinute = 0;
 int   beatAvg = 0;
 
 // ===== RR buffer untuk HRV =====
@@ -56,9 +56,9 @@ HRVFeatures calculateHRV() {
   HRVFeatures hrv;
   hrv.pnn50 = 0.0f;
   hrv.hf    = 0.0f;
-
-  if (rrCount < 10) return hrv;
-
+  if (rrCount < 10){
+    return hrv;
+  }
   hrv.pnn50 = calculatePNN50(rrIntervals, rrCount);
   hrv.hf    = calculateHF(rrIntervals, rrCount);
 
@@ -194,7 +194,7 @@ void loop() {
       lastNN = delta;  // simpan NN interval terakhir yang valid
 
       // hitung BPM dari RR
-      beatsPerMinute = 60000.0f / (float)delta;
+      beatsPerMinute = 60000 / delta;
 
       if (beatsPerMinute < 255 && beatsPerMinute > 20) {
         rates[rateSpot++] = (byte)beatsPerMinute;
@@ -266,22 +266,23 @@ void loop() {
     lcd.setCursor(0, 0);
     lcd.print("Analyzing...");
 
-    uint32_t tStart = millis();
+    uint32_t tStart = micros();
 
     // === hitung HRV ===
     HRVFeatures hrv = calculateHRV();
     // === prediksi ===
     int prediction = predictCancer(hrv);
 
-    uint32_t tEnd = millis();
-    uint32_t elapsed = tEnd - tStart; // waktu total klasifikasi
+    uint32_t tEnd = micros();
+    float elapsed = (tEnd - tStart) / 1000.0f;
+
 
     // tampilkan hasil + waktu klasifikasi di Serial
     Serial.println("\n=== HASIL HRV & KLASIFIKASI ===");
     Serial.print("pNN50 = "); Serial.println(hrv.pnn50);
     Serial.print("HF    = "); Serial.println(hrv.hf);
     Serial.print("Pred  = "); Serial.println(prediction == 0 ? "NORMAL" : "CANCER");
-    Serial.print("t     = "); Serial.print(elapsed); Serial.println(" ms");
+    Serial.print("t     = "); Serial.print(elapsed, 3); Serial.println(" ms");
 
     // tampil ke LCD: result dulu
     lcd.clear();
@@ -289,7 +290,7 @@ void loop() {
     lcd.print(prediction == 0 ? "Result: NORMAL" : "Result: CANCER");
     lcd.setCursor(0, 1);
     lcd.print("t=");
-    lcd.print(elapsed);
+    lcd.print(elapsed, 3);
     lcd.print("ms");
     delay(10000);
 

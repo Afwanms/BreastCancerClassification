@@ -185,43 +185,13 @@ void setup() {
 
   lcd.clear(); 
   lcd.print("Place finger...");
-  Serial.println("Place your index finger on the sensor.");
 }
 
 void loop() {
   unsigned long now = millis();
   long irValue = particleSensor.getIR();
 
-  // ==== deteksi jari lepas ====
-  if (irValue < FINGER_THRESHOLD) {                   // jika jari lepas
-      collecting = false;
-      
-      // reset variabel supaya fresh
-      rrCount = lastBeat = lastNN = 0;
-      beatsPerMinute = beatAvg = 0;
-      rateSpot = 0;
-      for (int i = 0; i < RATE_SIZE; i++) rates[i] = 0;
-
-      lcd.clear();
-      lcd.setCursor(0,0); 
-      lcd.print("No finger");
-      lcd.setCursor(0,1); 
-      lcd.print("detected");
-      Serial.println("No finger. Reset state.");
-      delay(80);
-      return; 
-  } else if (irValue > FINGER_THRESHOLD && !collecting) {   // jika jari baru ditempel
-      collecting = true;
-      startTime = now;
-      rrCount = lastBeat = lastNN = 0;
-      beatsPerMinute = beatAvg = 0;
-      rateSpot = 0;
-      for (int i = 0; i < RATE_SIZE; i++) rates[i] = 0;
-
-      Serial.println("Mulai akuisisi 5 menit...");
-  }
-
-    // ==== deteksi beat + BPM avg + RR (NN interval) ====
+  // ==== deteksi beat + BPM avg + RR (NN interval) ====
   if (checkForBeat(irValue)) {
     long delta = now - lastBeat;     // ms antar beat (INI RR / NN interval)
     lastBeat = now;
@@ -262,6 +232,34 @@ void loop() {
     timer(now - startTime);  // timer 5 menit
   }
 
+  // ==== deteksi jari lepas ====
+  if (irValue < FINGER_THRESHOLD) {                   // jika jari lepas
+      collecting = false;
+      
+      // reset variabel supaya fresh
+      rrCount = lastBeat = lastNN = 0;
+      beatsPerMinute = beatAvg = 0;
+      rateSpot = 0;
+      for (int i = 0; i < RATE_SIZE; i++) rates[i] = 0;
+
+      lcd.clear();
+      lcd.setCursor(0,0); 
+      lcd.print("No finger");
+      lcd.setCursor(0,1); 
+      lcd.print("detected");
+      delay(80);
+      return; 
+  }
+
+  else if (irValue > FINGER_THRESHOLD && !collecting) {
+      collecting = true;
+      startTime = now;
+      rrCount = lastBeat = lastNN = 0;
+      beatsPerMinute = beatAvg = 0;
+      rateSpot = 0;
+      for (int i = 0; i < RATE_SIZE; i++) rates[i] = 0;
+  }
+
   if (collecting && (now - startTime >= MEAS_MS)) {
     collecting = false;
 
@@ -274,21 +272,6 @@ void loop() {
     uint32_t tEnd = micros();
     float elapsed = (tEnd - tStart) / 1000.0f;
 
-    Serial.println("\n=== HASIL HRV & KLASIFIKASI ===");
-    Serial.print("pNN50 = "); 
-    Serial.println(hrv.pnn50);
-    Serial.print("HF    = "); 
-    Serial.println(hrv.hf);
-    Serial.print("Pred  = ");
-    if (prediction == 0) {
-      Serial.print("Result: NORMAL");
-    } else {
-      Serial.print("Result: CANCER");
-    }
-    Serial.print("t     = "); 
-    Serial.print(elapsed, 3); 
-    Serial.println(" ms");
-
     lcd.clear();
     lcd.setCursor(0, 0);
     if (prediction == 0) {
@@ -296,32 +279,15 @@ void loop() {
     } else {
       lcd.print("Result: CANCER");
     }
-    lcd.setCursor(0, 1);
-    lcd.print("t=");
-    lcd.print(elapsed, 3);
-    lcd.print("ms");
-    delay(10000);
 
     // siap sesi berikutnya
     rrCount = 0; 
     lastBeat = 0;
     lastNN = 0;
     for (int i=0; i<RATE_SIZE; i++) rates[i] = 0;
-    rateSpot = 0; 
-    beatAvg = 0; 
-    beatsPerMinute = 0;
+    rateSpot = 0; beatAvg = 0; beatsPerMinute = 0;
 
     lcd.clear();
     lcd.print("Place finger...");
   }
-
-  Serial.print(irValue);
-  Serial.print(",");
-  Serial.print(beatsPerMinute);
-  Serial.print(",");
-  Serial.print(beatAvg);
-  Serial.print(",");
-  Serial.println(lastNN);
-
-  delay(10);
 }

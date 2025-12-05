@@ -1,8 +1,8 @@
-/Dump
-/DeviceTest
-/DataCancer
-/DataDecisionTreeParams
-/FeatureEngineer
+Dump/
+Documentation/DeviceTest/
+DataCancer/
+DataDecisionTreeParams/
+FeatureEngineer/
 
 feature-importance.ipynb
 search-params.ipynb

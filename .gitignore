@@ -1,12 +1,11 @@
+bpm/
+hrv-nofilter/
+movingavg/
 Dump/
 DeviceTest/
 DataCancer/
 DataDecisionTreeParams/
 FeatureEngineer/
-bpm/
-hrv-nofilter/
-movingavg/
-
 feature-importance.ipynb
 search-params.ipynb
 visualization-dt-models.ipynb

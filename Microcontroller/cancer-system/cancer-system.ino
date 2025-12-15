@@ -38,8 +38,8 @@ float vImag[MAX_NN_INTERVALS];
 ArduinoFFT<float> FFT(vReal, vImag, MAX_NN_INTERVALS, 1.0f);
 
 // ==== Scaler fitur (samakan dgn training) ====
-float meanVals[2]  = {7.7733f, 20.1531f};    // mean pNN50, HF
-float scaleVals[2] = {9.4457f, 15.7324f};    // scale pNN50, HF
+float meanVals[2]  = {6.758620689655173f, 203.151724137931f};    // mean pNN50, HF
+float scaleVals[2] = {8.80695325772255f, 320.2095161314936f};    // scale pNN50, HF
 
 // ==== Model ====
 Eloquent::ML::Port::DecisionTree classifier;
@@ -297,9 +297,6 @@ void loop() {
       lcd.print("Result: CANCER");
     }
     lcd.setCursor(0, 1);
-    lcd.print("t=");
-    lcd.print(elapsed, 3);
-    lcd.print("ms");
     delay(10000);
 
     // siap sesi berikutnya

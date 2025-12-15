@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdarg>
 namespace Eloquent {
     namespace ML {
         namespace Port {
@@ -8,9 +9,9 @@ namespace Eloquent {
                     * Predict class for features vector
                     */
                     int predict(float *x) {
-                        if (x[0] <= 1.9009275436401367) {
-                            if (x[0] <= 0.42482107877731323) {
-                                if (x[1] <= -0.26795494556427) {
+                        if (x[0] <= 2.7172147035598755) {
+                            if (x[0] <= 0.35308438539505005) {
+                                if (x[1] <= -0.28266826272010803) {
                                     return 1;
                                 }
 
@@ -20,13 +21,7 @@ namespace Eloquent {
                             }
 
                             else {
-                                if (x[1] <= 0.5605651140213013) {
-                                    return 1;
-                                }
-
-                                else {
-                                    return 0;
-                                }
+                                return 1;
                             }
                         }
 

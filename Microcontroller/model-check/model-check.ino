@@ -8,7 +8,7 @@ void setup() {
 
 void loop() {
   // contoh input: [pNN50, HF] dalam satuan ter-scale (pakai scaler Python)
-  float features[2] = {49.77, 14432.67};   // nilai contoh
+  float features[2] = {1, 58};   // nilai contoh
   float meanVals[2]  = {6.758620689655173f, 203.151724137931f};    // mean pNN50, HF
   float scaleVals[2] = {8.80695325772255f, 320.2095161314936f}; 
   float input[2];
